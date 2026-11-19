@@ -72,9 +72,13 @@ final class WaraqScreenshotTests: XCTestCase {
             pause(0.7)
             shot("en-14-saved")
         }
-        let home = app.buttons["toast.home"]
+        let home = app.descendants(matching: .any)["toast.home"].firstMatch
         if home.waitForExistence(timeout: 3) {
             home.tap()
+            pause(1.2)
+            shot("en-15-shelf")
+        } else if app.buttons["editor.close"].exists {
+            app.buttons["editor.close"].tap()
             pause(1.2)
             shot("en-15-shelf")
         }
@@ -146,6 +150,7 @@ final class WaraqScreenshotTests: XCTestCase {
         let end = origin.withOffset(CGVector(dx: endX, dy: y - 40))
         start.press(forDuration: 0.05, thenDragTo: end, withVelocity: XCUIGestureVelocity(rawValue: 500), thenHoldForDuration: 0.2)
         pause(0.5)
+        logReader(app, "curl drag")
         shot("\(language)-curl-mid-turn")
     }
 
@@ -191,6 +196,7 @@ final class WaraqScreenshotTests: XCTestCase {
         }
         tool.tap()
         pause(wait)
+        logReader(app, "tool.\(id)")
     }
 
     private func drawStroke(_ app: XCUIApplication) {
@@ -219,6 +225,12 @@ final class WaraqScreenshotTests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    /// Prints the reader's debug status line into the test log.
+    private func logReader(_ app: XCUIApplication, _ step: String) {
+        let label = app.descendants(matching: .any)["debug.reader"].firstMatch
+        print("WARAQ-DEBUG \(step): \(label.exists ? label.label : "(no debug label)")")
     }
 
     private func pause(_ seconds: Double) {

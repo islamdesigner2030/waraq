@@ -121,16 +121,33 @@ final class PageCurlView: MTKView {
     }
 
     /// Loads the page snapshot that will be bent.
+    /// Redraws the image into a plain 8-bit BGRA buffer first, so any snapshot format
+    /// (wide colour, 16-bit, odd alpha) becomes a texture the same reliable way.
     func load(snapshot: UIImage) -> Bool {
-        guard isReady, let loader, let cg = snapshot.cgImage else { return false }
-        let options: [MTKTextureLoader.Option: Any] = [
-            .SRGB: NSNumber(value: false),
-            .origin: MTKTextureLoader.Origin.topLeft.rawValue,
-            .textureUsage: NSNumber(value: MTLTextureUsage.shaderRead.rawValue),
-            .textureStorageMode: NSNumber(value: MTLStorageMode.private.rawValue)
-        ]
-        texture = try? loader.newTexture(cgImage: cg, options: options)
-        return texture != nil
+        guard isReady, let device, let cg = snapshot.cgImage else { return false }
+        let w = cg.width, h = cg.height
+        guard w > 0, h > 0 else { return false }
+        let bytesPerRow = w * 4
+        var pixels = [UInt8](repeating: 0, count: bytesPerRow * h)
+        let drawn: Bool = pixels.withUnsafeMutableBytes { buffer in
+            let info = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+            guard let ctx = CGContext(data: buffer.baseAddress, width: w, height: h, bitsPerComponent: 8,
+                                      bytesPerRow: bytesPerRow, space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: info) else { return false }
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+            return true
+        }
+        guard drawn else { return false }
+        let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
+        desc.usage = .shaderRead
+        desc.storageMode = .shared
+        guard let tex = device.makeTexture(descriptor: desc) else { return false }
+        pixels.withUnsafeBytes { buffer in
+            tex.replace(region: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0,
+                        withBytes: buffer.baseAddress!, bytesPerRow: bytesPerRow)
+        }
+        texture = tex
+        return true
     }
 
     func releaseTexture() { texture = nil }

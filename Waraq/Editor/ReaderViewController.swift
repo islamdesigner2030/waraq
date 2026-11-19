@@ -48,6 +48,7 @@ final class ReaderViewController: UIViewController, UIGestureRecognizerDelegate 
     private var pendingMode: Mode = .forward
     private var pageFrame: CGRect = .zero
     private var keyboardFrame: CGRect = .null
+    private let debugLabel = UILabel()
 
     private var rtl: Bool { session.lang.isRTL }
     private var reduceMotion: Bool { UIAccessibility.isReduceMotionEnabled }
@@ -103,6 +104,16 @@ final class ReaderViewController: UIViewController, UIGestureRecognizerDelegate 
 
         session.navigator = { [weak self] index in self?.turn(to: index) }
         configureSlots()
+
+        #if DEBUG
+        // invisible status line read by the UI screenshot tests
+        debugLabel.frame = CGRect(x: 0, y: 0, width: 4, height: 4)
+        debugLabel.alpha = 0.02
+        debugLabel.isAccessibilityElement = true
+        debugLabel.accessibilityIdentifier = "debug.reader"
+        view.addSubview(debugLabel)
+        note("loaded curlReady=\(curl.isReady)")
+        #endif
 
         let nc = NotificationCenter.default
         nc.addObserver(self, selector: #selector(keyboardWillChange(_:)), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
@@ -207,6 +218,7 @@ final class ReaderViewController: UIViewController, UIGestureRecognizerDelegate 
             pendingMode = .backward
             return true
         }
+        note("pan rejected start=\(Int(start.x)),\(Int(start.y)) v=\(Int(v.dx)) width=\(Int(W))")
         return false
     }
 
@@ -285,7 +297,9 @@ final class ReaderViewController: UIViewController, UIGestureRecognizerDelegate 
 
     @discardableResult
     private func beginTurn(mode: Mode, destination: Int, grabY: CGFloat, interactive: Bool) -> Bool {
-        guard turn == nil, !pageFrame.isEmpty, curlView.isReady else { return false }
+        guard turn == nil else { note("begin: busy"); return false }
+        guard !pageFrame.isEmpty else { note("begin: no page frame"); return false }
+        guard curlView.isReady else { note("begin: curl not ready"); return false }
         view.endEditing(true)
         pageContainer.transform = .identity
 
@@ -296,7 +310,8 @@ final class ReaderViewController: UIViewController, UIGestureRecognizerDelegate 
         let full = CGPoint(x: -size.width, y: y)
 
         let sheet = mode == .forward ? hosts[currentSlot] : hosts[prevSlot]
-        guard let image = snapshot(sheet.view), curlView.load(snapshot: image) else { return false }
+        guard let image = snapshot(sheet.view) else { note("begin: snapshot failed"); return false }
+        guard curlView.load(snapshot: image) else { note("begin: texture failed \(image.size) x\(image.scale)"); return false }
 
         var u = curlView.uniforms
         let origin = view.convert(pageFrame.origin, to: curlView)
@@ -313,6 +328,7 @@ final class ReaderViewController: UIViewController, UIGestureRecognizerDelegate 
         render()
         if mode == .forward { sheet.view.alpha = 0 }   // the live page beneath now shows through
         startLink()
+        note("begin: ok " + (mode == .forward ? "forward" : "backward"))
         return true
     }
 
@@ -322,11 +338,7 @@ final class ReaderViewController: UIViewController, UIGestureRecognizerDelegate 
         guard turn == nil, target >= 0, target < count, target != session.currentIndex else { return }
         view.endEditing(true)
         if reduceMotion || !curlView.isReady {
-            UIView.transition(with: pageContainer, duration: 0.3, options: [.transitionCrossDissolve]) {
-                self.session.currentIndex = target
-                self.configureSlots()
-            }
-            session.rememberCurrentPage()
+            crossfade(to: target)
             return
         }
         let forward = target > session.currentIndex
@@ -336,11 +348,31 @@ final class ReaderViewController: UIViewController, UIGestureRecognizerDelegate 
             guard let self else { return }
             guard self.beginTurn(mode: forward ? .forward : .backward, destination: target,
                                  grabY: self.pageFrame.height * 0.62, interactive: false),
-                  var t = self.turn else { return }
+                  var t = self.turn else {
+                // never leave the reader stuck on the old page
+                self.crossfade(to: target)
+                return
+            }
             t.velocity = forward ? CGVector(dx: -1500, dy: -140) : CGVector(dx: 1500, dy: -60)
             self.aim(&t, commit: true)
             self.turn = t
         }
+    }
+
+    private func note(_ text: String) {
+        #if DEBUG
+        debugLabel.text = text
+        debugLabel.accessibilityLabel = text
+        #endif
+    }
+
+    private func crossfade(to target: Int) {
+        guard target >= 0, target < session.meta.pages.count else { return }
+        UIView.transition(with: pageContainer, duration: 0.3, options: [.transitionCrossDissolve]) {
+            self.session.currentIndex = target
+            self.configureSlots()
+        }
+        session.rememberCurrentPage()
     }
 
     /// First time only: the bottom corner lifts a little and settles back — no words needed.
@@ -483,6 +515,7 @@ final class ReaderViewController: UIViewController, UIGestureRecognizerDelegate 
         curlView.isHidden = true
         curlView.releaseTexture()
 
+        note("finished commit=\(t.commit) page=\(session.currentIndex + 1)")
         if t.isPeek {
             PaperSound.shared.quiet()
         } else {
@@ -502,6 +535,7 @@ final class ReaderViewController: UIViewController, UIGestureRecognizerDelegate 
         let format = UIGraphicsImageRendererFormat()
         format.scale = min(view.traitCollection.displayScale, 3)
         format.opaque = false
+        format.preferredRange = .standard   // 8-bit sRGB: what the curl texture expects
         return UIGraphicsImageRenderer(bounds: v.bounds, format: format).image { _ in
             v.drawHierarchy(in: v.bounds, afterScreenUpdates: true)
             for c in canvases {
