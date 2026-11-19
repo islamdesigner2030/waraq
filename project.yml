@@ -32,7 +32,6 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSRequiresIPhoneOS: true
         ITSAppUsesNonExemptEncryption: false
-        UIRequiresFullScreen: true
         CADisableMinimumFrameDurationOnPhone: true
         UIUserInterfaceStyle: Light
         UIStatusBarStyle: UIStatusBarStyleDarkContent

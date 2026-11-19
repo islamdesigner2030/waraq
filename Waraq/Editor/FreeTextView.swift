@@ -105,7 +105,7 @@ struct FreeTextView: UIViewRepresentable {
 
     func updateUIView(_ tv: PaperTextView, context: Context) {
         if tv.isEditable != editable {
-            if !editable { tv.resignFirstResponder() }
+            if !editable { _ = tv.resignFirstResponder() }
             tv.isEditable = editable
             tv.isSelectable = editable
         }

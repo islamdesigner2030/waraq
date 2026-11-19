@@ -83,7 +83,7 @@ final class WaraqScreenshotTests: XCTestCase {
         app.terminate()
         let again = launch(reset: false)
         pause(1.0)
-        again.tap()   // skip the welcome
+        // the welcome screen moves on by itself
         let cell = again.descendants(matching: .any)["notebook.cell"].firstMatch
         if cell.waitForExistence(timeout: 6) {
             cell.tap()
@@ -156,7 +156,7 @@ final class WaraqScreenshotTests: XCTestCase {
         choice.tap()
         pause(1.8)
         if shots { shot("\(prefix)02-welcome") }
-        app.tap()
+        // the welcome screen moves on by itself (a tap could land on the shelf's + button)
 
         let create = app.buttons["home.create"]
         XCTAssertTrue(create.waitForExistence(timeout: 8), "empty shelf")
