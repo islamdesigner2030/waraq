@@ -87,6 +87,7 @@ struct EditorScreen: View {
             }
             .opacity(opening ? 0 : 1)
             .animation(.easeInOut(duration: 0.35), value: opening)
+            .ignoresSafeArea(.keyboard)   // the save button stays put instead of riding on the keyboard
 
             if savedToast {
                 savedConfirmation

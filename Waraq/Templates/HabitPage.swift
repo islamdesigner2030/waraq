@@ -180,7 +180,7 @@ struct HabitPageView: View {
         let todayDay = BJCalendar.gregorian.component(.day, from: Date())
         let current = todayYM.year == data.year && todayYM.month == data.month && BJCalendar.week(ofDay: todayDay) == index
         return HStack(spacing: 6) {
-            Text(lang.t("W", "أ") + BJCalendar.number(index + 1, lang: lang))
+            Text(lang.t("W", "") + BJCalendar.number(index + 1, lang: lang))
                 .font(.system(size: 11, weight: current ? .bold : .medium, design: .serif))
                 .foregroundStyle(current ? Ink.gold : Ink.accent)
                 .frame(width: 26, alignment: .leading)

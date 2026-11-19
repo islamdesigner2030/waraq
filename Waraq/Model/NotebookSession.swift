@@ -138,8 +138,13 @@ final class NotebookSession {
             meta.pages.insert(contentsOf: new.dropFirst(), at: currentIndex + 1)
             return .stay
         }
-        meta.pages.insert(contentsOf: new, at: currentIndex + 1)
-        return .go(currentIndex + 1)
+        // keep a month's calendar and plan side by side
+        var insertAt = currentIndex + 1
+        if current.kind == .monthCalendar, insertAt < meta.pages.count, meta.pages[insertAt].kind == .monthPlan {
+            insertAt += 1
+        }
+        meta.pages.insert(contentsOf: new, at: insertAt)
+        return .go(insertAt)
     }
 
     private func found(_ i: Int) -> ToolResult { i == currentIndex ? .stay : .go(i) }

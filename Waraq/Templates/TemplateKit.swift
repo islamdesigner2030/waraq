@@ -100,13 +100,17 @@ struct PaperField: View {
     @Environment(\.layoutDirection) private var pageDirection
 
     var body: some View {
+        // Alignment is set explicitly in a left-to-right frame: an empty field otherwise falls back
+        // to the device language and an Arabic placeholder would sit on the left.
+        let rtl = (text.naturalDirection ?? pageDirection) == .rightToLeft
         TextField(placeholder, text: $text)
             .font(AppFont.paper(size, weight: weight))
             .foregroundStyle(color)
             .strikethrough(struck, color: Ink.soft)
             .submitLabel(.next)
             .onSubmit { onSubmit?() }
-            .environment(\.layoutDirection, text.naturalDirection ?? pageDirection)
+            .multilineTextAlignment(rtl ? .trailing : .leading)
+            .environment(\.layoutDirection, .leftToRight)
             .tint(Palette.mutedTeal)
     }
 }
