@@ -1,0 +1,81 @@
+# XcodeGen spec — run `xcodegen generate` in this folder to produce Waraq.xcodeproj
+name: Waraq
+options:
+  bundleIdPrefix: app.waraq
+  deploymentTarget:
+    iOS: "26.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  xcodeVersion: "26.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+
+targets:
+  Waraq:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Waraq
+    info:
+      path: Waraq/Info.plist
+      properties:
+        CFBundleDisplayName: Waraq
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, ar]
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UIRequiresFullScreen: true
+        CADisableMinimumFrameDurationOnPhone: true
+        UIUserInterfaceStyle: Light
+        UIStatusBarStyle: UIStatusBarStyleDarkContent
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIAppFonts:
+          - ArefRuqaa-Regular.ttf
+          - GreatVibes-Regular.ttf
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    settings:
+      base:
+        PRODUCT_NAME: Waraq
+        PRODUCT_BUNDLE_IDENTIFIER: app.waraq.journal
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: YES
+        LOCALIZATION_PREFERS_STRING_CATALOGS: NO
+        MTL_FAST_MATH: YES
+    scheme:
+      testTargets:
+        - WaraqUITests
+
+  # Walks through the app and saves screenshots (run by the GitHub workflow).
+  WaraqUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: WaraqUITests
+    dependencies:
+      - target: Waraq
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.waraq.journal.uitests
+        TEST_TARGET_NAME: Waraq
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic

@@ -1,0 +1,101 @@
+# Builds the app on a cloud Mac (GitHub Actions) — no Mac needed on your side.
+# 1) Compiles for the iOS Simulator (a full compile check of every Swift and Metal file).
+# 2) Builds an unsigned device app and packages it as Waraq-unsigned.ipa (download from the run's "Artifacts").
+#    An unsigned IPA must be signed with your Apple ID before it can be installed on an iPhone.
+name: Build iOS app
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select the newest Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$XCODE" ]; then sudo xcode-select -s "$XCODE"; fi
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Compile for iOS Simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project Waraq.xcodeproj -scheme Waraq -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build-simulator.log
+
+      - name: Build unsigned device app
+        run: |
+          set -o pipefail
+          xcodebuild -project Waraq.xcodeproj -scheme Waraq -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tee build-device.log
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Waraq.app Payload/
+          zip -qry Waraq-unsigned.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Waraq-unsigned-ipa
+          path: Waraq-unsigned.ipa
+
+      # 3) Runs the app in an iPhone simulator and photographs every screen (see WaraqUITests).
+      - name: Pick an iPhone simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)["devices"]
+          runtimes = sorted((r for r in data if "iOS-26" in r or "iOS-2" in r), reverse=True)
+          for r in runtimes:
+              phones = [d for d in data[r] if d["name"].startswith("iPhone") and "Pro Max" not in d["name"] and "Plus" not in d["name"]]
+              if phones:
+                  print(phones[-1]["udid"]); break
+          ')
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl list devices | grep "$UDID" || true
+
+      - name: Run screenshot tests
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          xcodebuild -project Waraq.xcodeproj -scheme Waraq -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO test 2>&1 | tee ui-tests.log
+
+      - name: Export screenshots
+        if: always()
+        continue-on-error: true
+        run: python3 scripts/export_screenshots.py TestResults.xcresult screenshots
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots
+          if-no-files-found: warn
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: "*.log"
+          if-no-files-found: ignore
