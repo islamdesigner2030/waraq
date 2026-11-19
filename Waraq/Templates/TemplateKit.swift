@@ -48,7 +48,8 @@ struct SectionLabel: View {
         HStack(spacing: 6) {
             Text(text.uppercased())
                 .font(.system(size: 10.5, weight: .semibold, design: .serif))
-                .tracking(1.2)
+                // letter-spacing would break the joins between Arabic letters
+                .tracking(text.naturalDirection == .rightToLeft ? 0 : 1.2)
                 .foregroundStyle(Ink.accent.opacity(0.8))
             Rectangle().fill(Ink.gold.opacity(0.45)).frame(height: 0.6)
             if let trailing {
@@ -123,6 +124,9 @@ struct BulletListEditor: View {
     let placeholder: String
     let addTitle: String
     let lang: AppLanguage
+    /// Reads the list as it is right now. Text fields read through this so a keystroke
+    /// is never overwritten by an older copy of the text.
+    let live: () -> [BulletItem]
     let update: ((inout [BulletItem]) -> Void) -> Void
 
     @FocusState private var focused: UUID?
@@ -188,7 +192,7 @@ struct BulletListEditor: View {
             .accessibilityLabel(stateLabel(item.state))
 
             PaperField(placeholder: placeholder,
-                       text: Binding(get: { item.text }, set: { v in
+                       text: Binding(get: { live().first { $0.id == item.id }?.text ?? item.text }, set: { v in
                            update { list in
                                if let i = list.firstIndex(where: { $0.id == item.id }) { list[i].text = v }
                            }

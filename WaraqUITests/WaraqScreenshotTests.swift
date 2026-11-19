@@ -34,6 +34,8 @@ final class WaraqScreenshotTests: XCTestCase {
         if mit.waitForExistence(timeout: 3) {
             mit.tap()
             mit.typeText("Finish the first chapter\n")
+            pause(0.5)
+            print("WARAQ-DEBUG typed priority: \(mit.value as? String ?? "?")")
         }
         shot("en-08-daily")
 
@@ -45,6 +47,8 @@ final class WaraqScreenshotTests: XCTestCase {
         if habit.waitForExistence(timeout: 3) {
             habit.tap()
             habit.typeText("Read 10 minutes\n")
+            pause(0.5)
+            print("WARAQ-DEBUG typed habit: \(habit.value as? String ?? "?")")
         }
         shot("en-10-habits")
 

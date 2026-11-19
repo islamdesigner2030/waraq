@@ -40,7 +40,8 @@ struct DailyPageView: View {
                                  maxRows: taskRows,
                                  placeholder: lang.t("Task, event or note", "مهمة أو حدث أو ملاحظة"),
                                  addTitle: lang.t("Add", "إضافة"),
-                                 lang: lang) { change in
+                                 lang: lang,
+                                 live: { session.page(page.id)?.daily?.items ?? [] }) { change in
                     session.mutate(page.id) { p in
                         if p.daily != nil { change(&p.daily!.items) }
                     }
@@ -76,7 +77,9 @@ struct DailyPageView: View {
             .accessibilityLabel(done ? lang.t("Done", "منجزة") : lang.t("Mark done", "تحديد كمنجزة"))
 
             PaperField(placeholder: isMain ? lang.t("The most important task", "المهمة الأهم") : lang.t("Priority", "أولوية"),
-                       text: Binding(get: { item.text }, set: { v in updatePriority(item.id) { $0.text = v } }),
+                       text: Binding(get: {
+                           session.page(page.id)?.daily?.priorities.first { $0.id == item.id }?.text ?? item.text
+                       }, set: { v in updatePriority(item.id) { $0.text = v } }),
                        weight: isMain ? .semibold : .regular,
                        color: done ? Ink.soft : Ink.main,
                        struck: done)

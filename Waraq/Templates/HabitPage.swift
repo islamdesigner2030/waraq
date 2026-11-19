@@ -66,7 +66,9 @@ struct HabitPageView: View {
                     .foregroundStyle(Ink.accent)
                     .frame(width: 22)
                 PaperField(placeholder: lang.t("e.g. read 10 minutes", "مثال: قراءة ١٠ دقائق"),
-                           text: Binding(get: { habit.name }, set: { v in update(habit.id) { $0.name = String(v.prefix(30)) } }),
+                           text: Binding(get: {
+                               session.page(page.id)?.habits?.habits.first { $0.id == habit.id }?.name ?? habit.name
+                           }, set: { v in update(habit.id) { $0.name = String(v.prefix(30)) } }),
                            size: 15, weight: .medium)
                 Menu {
                     ForEach(BJCalendar.orderedWeekdays(lang: lang), id: \.self) { wd in
@@ -185,7 +187,10 @@ struct HabitPageView: View {
                 .foregroundStyle(current ? Ink.gold : Ink.accent)
                 .frame(width: 26, alignment: .leading)
             PaperField(placeholder: index == 0 ? lang.t("Plan for week 1", "خطة الأسبوع الأول") : lang.t("Adjust for this week", "عدّل لهذا الأسبوع"),
-                       text: Binding(get: { plan }, set: { v in
+                       text: Binding(get: {
+                           let plans = session.page(page.id)?.habits?.weekPlans ?? []
+                           return index < plans.count ? plans[index] : plan
+                       }, set: { v in
                            session.mutate(page.id) { p in
                                guard var h = p.habits, index < h.weekPlans.count else { return }
                                h.weekPlans[index] = v

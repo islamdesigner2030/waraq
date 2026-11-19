@@ -73,7 +73,10 @@ struct MonthCalendarPageView: View {
                 .foregroundStyle(weekend ? Ink.accent : Ink.soft)
                 .frame(width: 14)
             PaperField(placeholder: "",
-                       text: Binding(get: { event }, set: { v in
+                       text: Binding(get: {
+                           let events = session.page(page.id)?.month?.events ?? []
+                           return day - 1 < events.count ? events[day - 1] : event
+                       }, set: { v in
                            session.mutate(page.id) { p in
                                guard var m = p.month else { return }
                                while m.events.count < day { m.events.append("") }
@@ -132,7 +135,8 @@ struct MonthPlanPageView: View {
                                  maxRows: max(3, rows - 3),
                                  placeholder: lang.t("Goal or task for the month", "هدف أو مهمة للشهر"),
                                  addTitle: lang.t("Add", "إضافة"),
-                                 lang: lang) { change in
+                                 lang: lang,
+                                 live: { session.page(page.id)?.monthPlan?.goals ?? [] }) { change in
                     session.mutate(page.id) { p in
                         if p.monthPlan != nil { change(&p.monthPlan!.goals) }
                     }
